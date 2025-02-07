@@ -3,7 +3,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { Pool } from 'pg';
+const { Pool } = require('pg');
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
