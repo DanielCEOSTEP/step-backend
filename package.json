@@ -1,7 +1,7 @@
-
 {
   "name": "step-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "STEP App Backend",
   "main": "index.js",
   "scripts": {
