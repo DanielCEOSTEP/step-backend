@@ -1,21 +1,15 @@
-
-// Import required modules
 import express from 'express';
 import dotenv from 'dotenv';
-import cors from 'cors';
+import cors from 'cors';  // Этот импорт добавляем
 import pkg from 'pg';
 const { Pool } = pkg;
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';  // Этот импорт добавляем
+import bcrypt from 'bcrypt';      // Этот импорт добавляем
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const jwtSecret = process.env.JWT_SECRET;
-
-// Configure PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -23,39 +17,20 @@ const pool = new Pool({
   },
 });
 
-app.use(cors());
+app.use(cors());  // Добавляем использование CORS
 app.use(express.json());
 
-// API Route: User Registration
-app.post('/register', async (req, res) => {
-  const { name, email, password, phone } = req.body;
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      'INSERT INTO users (name, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id',
-      [name, email, hashedPassword, phone]
-    );
-    res.status(201).json({ message: 'User registered', userId: result.rows[0].id });
-  } catch (error) {
-    res.status(500).json({ error: 'Error registering user' });
-  }
-});
-
-// API Route: User Login
-app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
-    const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ userId: user.id }, jwtSecret, { expiresIn: '1h' });
-    res.json({ message: 'Login successful', token });
-  } catch (error) {
-    res.status(500).json({ error: 'Error logging in' });
-  }
-});
+// Создаем таблицу pending_chats, если её нет
+pool.query(`
+  CREATE TABLE IF NOT EXISTS pending_chats (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    target_user_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, target_user_id)
+  );
+`).then(() => console.log('Table "pending_chats" is ready'))
+  .catch(err => console.error('Error creating table:', err));
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
