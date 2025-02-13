@@ -55,7 +55,7 @@ app.post('/register', async (req, res) => {
       [name, email, hashedPassword, phone]
     );
     const token = jwt.sign({ id: result.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
+    res.json({ token, message: 'User registered successfully' });
   } catch (err) {
     console.error('Registration error:', err);
     res.status(500).json({ error: 'User registration failed' });
@@ -76,14 +76,14 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
+    res.json({ token, message: 'Login successful' });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
   }
 });
 
-// Проверка токена
+// Проверка токена и получение профиля пользователя
 app.get('/profile', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) {
@@ -91,11 +91,37 @@ app.get('/profile', async (req, res) => {
   }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
+    const result = await pool.query('SELECT id, name, email, phone, created_at FROM users WHERE id = $1', [decoded.id]);
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Token verification error:', err);
     res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// Создание записи в таблице pending_chats
+app.post('/pending_chats', async (req, res) => {
+  const { user_id, target_user_id } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO pending_chats (user_id, target_user_id) VALUES ($1, $2) RETURNING *',
+      [user_id, target_user_id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error adding to pending_chats:', err);
+    res.status(500).json({ error: 'Failed to add to pending_chats' });
+  }
+});
+
+// Получение всех записей из таблицы pending_chats
+app.get('/pending_chats', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM pending_chats');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching pending_chats:', err);
+    res.status(500).json({ error: 'Failed to fetch pending_chats' });
   }
 });
 
